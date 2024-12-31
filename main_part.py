@@ -103,11 +103,6 @@ class GameUIDetector:
         input_image = cv2.imread(input_image_path)
         input_gray = cv2.cvtColor(input_image, cv2.COLOR_BGR2GRAY)
 
-        # Resize the input image to match the size of the stored UI images
-        if self.ui_data:
-            target_size = self.ui_data[0][1].shape  # Get the shape of the first UI image
-            input_gray = cv2.resize(input_gray, (target_size[1], target_size[0]))
-
         # Apply a slight blur to account for minor differences
         input_gray = cv2.GaussianBlur(input_gray, (5, 5), 0)
 
@@ -115,8 +110,11 @@ class GameUIDetector:
         best_similarity = float('inf')
 
         for mask, ui_image, label in self.ui_data:
+            target_size = ui_image.shape  # Get the shape of the first UI image
+            resized_input_gray = cv2.resize(input_gray, (target_size[1], target_size[0]))
             # Apply the mask to both the input image and the stored UI image
-            masked_input = cv2.bitwise_and(input_gray, input_gray, mask=mask)
+            
+            masked_input = cv2.bitwise_and(resized_input_gray, resized_input_gray, mask=mask)
             masked_ui_image = cv2.bitwise_and(ui_image, ui_image, mask=mask)
 
             # Compute similarity (mean squared error)
@@ -132,7 +130,7 @@ if __name__ == "__main__":
     detector = GameUIDetector()
     
     # Example: Training from a folder
-    detector.train_from_folder("training_input", "Master Duel", "Battle")
+    # detector.train_from_folder("training_input", "Brawl Stars", "Character Info")
 
     # Load training results from the train_result directory
     detector.load_train_results()
@@ -144,6 +142,6 @@ if __name__ == "__main__":
     if detecting_images:
         for image_path in detecting_images:  # Iterate through all images in the folder
             result = detector.detect(image_path)
-            print(f"Imagㄗ: {image_path}, Detected: {result}")
+            print(f"Image: {image_path}, Detected: {result}")
     else:
         print("No images found in detecting_input directory.")
