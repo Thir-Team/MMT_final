@@ -14,14 +14,14 @@
 ### Training side
   1. 將一系列用於訓練的截圖放到「training_input」中
   2. 執行
-"""
+'''
 detector.train_from_folder("training_input", <遊戲名稱（如"Arknights"）>, <頁面名稱（如"Home"或"Battle"）>)
-"""
+'''
 ### Detecting side
   1. 將一系列想辨識的截圖放到「detecting_input」中
   2. 在main_part執行detector.load_train_results()
   3. 執行
-"""
+'''
 detecting_input_dir = "detecting_input"
 detecting_images = [os.path.join(detecting_input_dir, fname) for fname in os.listdir(detecting_input_dir) if fname.endswith(('.png', '.jpg', '.jpeg'))]
 
@@ -31,4 +31,4 @@ if detecting_images:
         print(f"Image: {image_path}, Detected: {result}")
 else:
     print("No images found in detecting_input directory.")
-"""
+'''
