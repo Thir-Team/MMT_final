@@ -70,6 +70,28 @@ class GameUIDetector:
         # Append to the internal data for detection
         self.ui_data.append((mask, ui_image, f"Game: {game_name}, Screen: {screen_type}"))
 
+    def load_train_results(self, base_output_dir: str = "train_result"):
+        """Load training results from the specified directory into memory.
+        Args:
+            base_output_dir: Base directory containing the training results.
+        """
+        self.ui_data = []
+        for game_name in os.listdir(base_output_dir):
+            game_dir = os.path.join(base_output_dir, game_name)
+            if not os.path.isdir(game_dir):
+                continue
+            for screen_type in os.listdir(game_dir):
+                screen_dir = os.path.join(game_dir, screen_type)
+                if not os.path.isdir(screen_dir):
+                    continue
+                mask_path = os.path.join(screen_dir, "mask.png")
+                ui_image_path = os.path.join(screen_dir, "ui_image.png")
+                if os.path.exists(mask_path) and os.path.exists(ui_image_path):
+                    mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+                    ui_image = cv2.imread(ui_image_path, cv2.IMREAD_GRAYSCALE)
+                    label = f"Game: {game_name}, Screen: {screen_type}"
+                    self.ui_data.append((mask, ui_image, label))
+
     def detect(self, input_image_path: str) -> str:
         """Detect which game's UI the input image belongs to.
         Args:
@@ -108,16 +130,20 @@ class GameUIDetector:
 
 if __name__ == "__main__":
     detector = GameUIDetector()
-
+    
     # Example: Training from a folder
-    detector.train_from_folder("training_input", "Arknights", "Battle")
+    detector.train_from_folder("training_input", "Master Duel", "Battle")
+
+    # Load training results from the train_result directory
+    detector.load_train_results()
 
     # Example detection
     detecting_input_dir = "detecting_input"
     detecting_images = [os.path.join(detecting_input_dir, fname) for fname in os.listdir(detecting_input_dir) if fname.endswith(('.png', '.jpg', '.jpeg'))]
 
     if detecting_images:
-        result = detector.detect(detecting_images[0])  # Use the first image in the folder
-        print(f"Detected: {result}")
+        for image_path in detecting_images:  # Iterate through all images in the folder
+            result = detector.detect(image_path)
+            print(f"Imagㄗ: {image_path}, Detected: {result}")
     else:
         print("No images found in detecting_input directory.")
