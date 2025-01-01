@@ -130,7 +130,7 @@ if __name__ == "__main__":
     detector = GameUIDetector()
     
     # Example: Training from a folder
-    # detector.train_from_folder("training_input", "Brawl Stars", "Character Info")
+    detector.train_from_folder("training_input", "Arknights", "Home")
 
     # Load training results from the train_result directory
     detector.load_train_results()
