@@ -30,9 +30,14 @@ class GameUIDetector:
         # Compute the median image to represent the UI Image
         ui_image = np.median(stacked_images, axis=-1).astype(np.uint8)
 
-        # Compute the similarity mask
-        similar_count = np.sum(np.abs(stacked_images - ui_image[..., None]) < 10, axis=-1)  # Allow small differences
-        mask = (similar_count / stacked_images.shape[-1] >= similarity_threshold).astype(np.uint8) * 255
+        # Compute the similarity mask, allowing for transparency handling
+        similar_count = np.zeros(ui_image.shape, dtype=np.uint8)
+        for img in gray_images:
+            diff = np.abs(img.astype(np.int16) - ui_image.astype(np.int16))
+            similar_regions = (diff < 10).astype(np.uint8)  # Allow small differences for transparency effects
+            similar_count += similar_regions
+
+        mask = (similar_count >= similarity_threshold * len(images)).astype(np.uint8) * 255
 
         return mask, ui_image
 
@@ -45,7 +50,7 @@ class GameUIDetector:
         """
         # Get all image paths in the folder
         image_paths = [os.path.join(training_input, fname) for fname in os.listdir(training_input) if fname.endswith(('.png', '.jpg', '.jpeg'))]
-        images = [cv2.imread(path) for path in image_paths]
+        images = [cv2.imread(path, cv2.IMREAD_UNCHANGED) for path in image_paths]
 
         if not images:
             raise ValueError(f"No valid images found in {training_input}")
@@ -100,7 +105,7 @@ class GameUIDetector:
         Returns:
             The label of the most similar UI.
         """
-        input_image = cv2.imread(input_image_path)
+        input_image = cv2.imread(input_image_path, cv2.IMREAD_UNCHANGED)
         input_gray = cv2.cvtColor(input_image, cv2.COLOR_BGR2GRAY)
 
         # Apply a slight blur to account for minor differences
@@ -117,8 +122,12 @@ class GameUIDetector:
             masked_input = cv2.bitwise_and(resized_input_gray, resized_input_gray, mask=mask)
             masked_ui_image = cv2.bitwise_and(ui_image, ui_image, mask=mask)
 
-            # Compute similarity (mean squared error)
-            similarity = mean_squared_error(masked_input.flatten(), masked_ui_image.flatten())
+            # Handle transparency by ignoring fully transparent regions
+            non_zero_mask = mask > 0
+            if np.any(non_zero_mask):
+                similarity = mean_squared_error(masked_input[non_zero_mask].flatten(), masked_ui_image[non_zero_mask].flatten())
+            else:
+                similarity = float('inf')
 
             if similarity < best_similarity:
                 best_similarity = similarity
