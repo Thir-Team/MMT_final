@@ -139,18 +139,19 @@ if __name__ == "__main__":
     detector = GameUIDetector()
     
     # Example: Training from a folder
-    detector.train_from_folder("training_input", "Brawl Stars", "Home")
-
+    # detector.train_from_folder("training_input", "Brawl Stars", "Home")
+    """
     # Load training results from the train_result directory
     detector.load_train_results()
 
     # Example detection
     detecting_input_dir = "detecting_input"
     detecting_images = [os.path.join(detecting_input_dir, fname) for fname in os.listdir(detecting_input_dir) if fname.endswith(('.png', '.jpg', '.jpeg'))]
-
+    
     if detecting_images:
         for image_path in detecting_images:  # Iterate through all images in the folder
             result = detector.detect(image_path)
             print(f"Image: {image_path}, Detected: {result}")
     else:
         print("No images found in detecting_input directory.")
+    """
