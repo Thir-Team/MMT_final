@@ -41,37 +41,6 @@ class GameUIDetector:
 
         return mask, ui_image
 
-    def isolate_ui_from_background(self, image: np.ndarray, mask: np.ndarray) -> np.ndarray:
-        """Isolate UI components from the background, ignoring transparency effects.
-        Args:
-            image: The input image.
-            mask: The mask highlighting the UI regions.
-
-        Returns:
-            Isolated UI image.
-        """
-        # Ensure the image has at least 3 channels
-        if len(image.shape) == 2:  # Grayscale image
-            image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
-            alpha_channel = np.ones(image.shape[:2], dtype=np.float32)  # Full opacity
-        elif image.shape[2] == 4:  # RGBA image
-            alpha_channel = image[:, :, 3] / 255.0
-            image = image[:, :, :3]  # Drop the alpha channel
-        else:
-            alpha_channel = np.ones(image.shape[:2], dtype=np.float32)  # Full opacity
-
-        # Convert the image to float for transparency handling
-        image_float = image.astype(np.float32) / 255.0
-
-        # Apply the mask to isolate UI elements
-        mask_normalized = mask.astype(np.float32) / 255.0
-        isolated_ui = image_float * mask_normalized[:, :, None] * alpha_channel[:, :, None]
-
-        # Normalize back to 0-255 range
-        isolated_ui = (isolated_ui * 255).astype(np.uint8)
-
-        return isolated_ui
-
     def train_from_folder(self, training_input: str, game_name: str, screen_type: str):
         """Train the model using images in the specified folder.
         Args:
@@ -124,7 +93,7 @@ class GameUIDetector:
                 ui_image_path = os.path.join(screen_dir, "ui_image.png")
                 if os.path.exists(mask_path) and os.path.exists(ui_image_path):
                     mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
-                    ui_image = cv2.imread(ui_image_path, cv2.IMREAD_UNCHANGED)
+                    ui_image = cv2.imread(ui_image_path, cv2.IMREAD_GRAYSCALE)
                     label = f"Game: {game_name}, Screen: {screen_type}"
                     self.ui_data.append((mask, ui_image, label))
 
@@ -137,29 +106,26 @@ class GameUIDetector:
             The label of the most similar UI.
         """
         input_image = cv2.imread(input_image_path, cv2.IMREAD_UNCHANGED)
+        input_gray = cv2.cvtColor(input_image, cv2.COLOR_BGR2GRAY)
 
-        if input_image is None:
-            raise ValueError(f"Failed to load image: {input_image_path}")
+        # Apply a slight blur to account for minor differences
+        input_gray = cv2.GaussianBlur(input_gray, (5, 5), 0)
 
         best_label = None
         best_similarity = float('inf')
 
         for mask, ui_image, label in self.ui_data:
-            target_size = ui_image.shape  # Get the shape of the UI image
-            resized_input_image = cv2.resize(input_image, (target_size[1], target_size[0]))
+            target_size = ui_image.shape  # Get the shape of the first UI image
+            resized_input_gray = cv2.resize(input_gray, (target_size[1], target_size[0]))
+            # Apply the mask to both the input image and the stored UI image
+            
+            masked_input = cv2.bitwise_and(resized_input_gray, resized_input_gray, mask=mask)
+            masked_ui_image = cv2.bitwise_and(ui_image, ui_image, mask=mask)
 
-            # Isolate UI components from the input image and stored UI image
-            isolated_input = self.isolate_ui_from_background(resized_input_image, mask)
-            isolated_ui_image = self.isolate_ui_from_background(ui_image, mask)
-
-            # Convert isolated images to grayscale for comparison
-            isolated_input_gray = cv2.cvtColor(isolated_input, cv2.COLOR_BGR2GRAY)
-            isolated_ui_image_gray = cv2.cvtColor(isolated_ui_image, cv2.COLOR_BGR2GRAY)
-
-            # Compute similarity only in non-zero mask regions
+            # Handle transparency by ignoring fully transparent regions
             non_zero_mask = mask > 0
             if np.any(non_zero_mask):
-                similarity = mean_squared_error(isolated_input_gray[non_zero_mask].flatten(), isolated_ui_image_gray[non_zero_mask].flatten())
+                similarity = mean_squared_error(masked_input[non_zero_mask].flatten(), masked_ui_image[non_zero_mask].flatten())
             else:
                 similarity = float('inf')
 
